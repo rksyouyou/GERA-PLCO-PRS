@@ -14,6 +14,7 @@ The repository contains source code and fixed model parameters only. No particip
 | `performance.R` | AUC estimates, paired participant bootstrap intervals, and two-sided Wald comparisons |
 | `optimism.R` | GERA bootstrap optimism correction with all five models refitted |
 | `clinical_utility.R` | Observed-follow-up categorical NRI and NNS |
+| `decision_curve.R` | Observed-follow-up net benefit and standardized net benefit |
 | `calibration.R` | Five-year calibration with a time-only SCAM in each predicted-risk quintile |
 | `point_score.R` | Integer scores and score-level risk summaries for the defined profile grid |
 
@@ -82,6 +83,18 @@ validation$differences
 This is a separate model-refitting analysis from `auc_bootstrap()`, which holds predictions fixed. Corrected AUCs and paired differences are reported as point estimates. Their Monte Carlo standard errors quantify simulation precision; they are not statistical standard errors or confidence intervals. The original apparent-AUC inference and PLCO external-validation results are retained separately.
 
 The fitting routine checks inner and outer convergence. If default fitting fails, it retries the same model and independently checks the single smoothing parameter using the same binomial UBRE criterion. Unresolved fits stop the calculation rather than silently excluding a sample. Setting `workers` above 1 enables parallel refits on macOS/Linux; Windows uses sequential refits. Functions return results in memory and do not write participant data or output files.
+
+## Decision curve analysis
+
+`decision_curve()` evaluates fixed-model probabilities against AN status at each participant's observed follow-up examination. It returns net benefit and standardized net benefit across thresholds of 1%–20% in 0.1-percentage-point steps, with All and None as references. Selection includes probabilities equal to the threshold. Standardized net benefit divides net benefit by the observed AN prevalence in the supplied cohort.
+
+```r
+source("decision_curve.R")
+# d and p are locally held outcomes and fixed-model predictions in the same row order.
+curves <- decision_curve(d$Y, p)
+```
+
+These are observed-follow-up comparisons, not fixed-time analyses. GERA curves reflect apparent performance. No model refitting, optimism correction, bootstrap uncertainty, or automatic file export is performed. The manuscript displays Base, Model2, Full, All and None; the function retains all supplied model results. The calculation has been checked against the adopted frozen results, an independent rmda calculation, and the corresponding categorical NRI components at the 10% threshold.
 
 ## Calibration and point score
 
