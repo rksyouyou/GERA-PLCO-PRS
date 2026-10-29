@@ -12,6 +12,7 @@ The repository contains source code and fixed model parameters only. No particip
 | `predict.R` | Absolute-risk predictions using the fixed GERA models |
 | `fit_models.R` | Clinical imputation, cohort-level PRS standardization, and optional development fitting |
 | `performance.R` | AUC estimates, paired participant bootstrap intervals, and two-sided Wald comparisons |
+| `optimism.R` | GERA bootstrap optimism correction with all five models refitted |
 | `clinical_utility.R` | Observed-follow-up categorical NRI and NNS |
 | `calibration.R` | Five-year calibration with a time-only SCAM in each predicted-risk quintile |
 | `point_score.R` | Integer scores and score-level risk summaries for the defined profile grid |
@@ -63,6 +64,26 @@ nns <- nns_bootstrap(d$Y, p)
 AUC and NRI use 10,000 paired participant resamples and type-7 percentile intervals. AUC comparisons use the standard deviation of paired bootstrap differences for two-sided Wald tests. NRI uses the 10% probability threshold at each participant's observed follow-up examination. Its event, non-event, and total components compare Full and Models1–3 with Base. NNS selects the highest-risk 10% or 20%, includes ties at the type-7 quantile cutoff, and uses type-1 percentile intervals. The same sampled rows are used for all models within each bootstrap replicate; models and preprocessing remain fixed.
 
 The seed arguments make new bootstrap runs repeatable. Exact Monte Carlo endpoints can differ from the manuscript's archived draws, which are not distributed. For the original NRI stream across GERA then PLCO, set the seed once and call both cohorts with `seed = NULL`.
+
+## Bootstrap optimism correction
+
+The GERA analysis additionally uses 500 ordinary participant bootstrap samples shared by all five models (seed 123). Each model is refitted in each sample, including the time smooth and smoothing parameter, with clinical imputations and PRS preprocessing held fixed. Optimism is the mean difference between a refitted model's bootstrap-sample AUC and its AUC in the original cohort. The corrected AUC subtracts this mean from the original apparent AUC.
+
+```r
+source("fit_models.R")
+source("optimism.R")
+# gera is a locally held, prepared development cohort.
+models <- fit_models(gera)
+validation <- optimism_bootstrap(gera, models, B = 500L, seed = 123L)
+validation$AUC
+validation$differences
+```
+
+This is a separate model-refitting analysis from `auc_bootstrap()`, which holds predictions fixed. Corrected AUCs and paired differences are reported as point estimates. Their Monte Carlo standard errors quantify simulation precision; they are not statistical standard errors or confidence intervals. The original apparent-AUC inference and PLCO external-validation results are retained separately.
+
+The fitting routine checks inner and outer convergence. If default fitting fails, it retries the same model and independently checks the single smoothing parameter using the same binomial UBRE criterion. Unresolved fits stop the calculation rather than silently excluding a sample. Setting `workers` above 1 enables parallel refits on macOS/Linux; Windows uses sequential refits. Functions return results in memory and do not write participant data or output files.
+
+## Calibration and point score
 
 `calibration_5y()` fits time-only SCAMs within five quintiles of Full-model five-year predicted risk, with a link-scale Wald interval transformed back to probability. `point_score()` applies each term's contribution separately and rounds after scaling the AA coefficient to 10 points. `profile_grid()` creates the study's 1,008 hypothetical combinations in memory; `score_risk()` averages model predictions within each integer score. These profiles are not participants. No functions write files automatically.
 
