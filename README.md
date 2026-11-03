@@ -1,6 +1,6 @@
 # GERA–PLCO PRS
 
-R source code and fixed GERA model parameters for the current three-model GERA–PLCO manuscript (2026-11-02). GERA is the development population and PLCO is independent external validation. The repository contains no participant records, genotypes, PRS observations, imputations, fitted-model RDS files, bootstrap draws, or study output files. Supply authorized study data locally and keep inputs, checkpoints and outputs outside this repository.
+R source code and fixed GERA model parameters for the current three-model GERA–PLCO manuscript (2026-11-03; DCA removed). GERA is the development population and PLCO is independent external validation. The repository contains no participant records, genotypes, PRS observations, imputations, fitted-model RDS files, bootstrap draws, or study output files. Supply authorized study data locally and keep inputs, checkpoints and outputs outside this repository.
 
 ## Model definitions
 
@@ -12,7 +12,7 @@ All models use a complementary log-log link and a nondecreasing SCOP-spline, `s(
 | `PRS` | Model 2 | Baseline findings, PRS, and baseline findings × PRS | `Model3` |
 | `Full` | Full model | The PRS model plus age, sex, BMI, and colorectal cancer family history | `Full` |
 
-The previous age/sex and established-risk-factor-only models are omitted from this release. Code uses descriptive keys to avoid collisions with historical model numbering. The primary manuscript comparison is Full versus Base. That contrast adds established risk factors and PRS jointly. Full versus PRS assesses the addition of established risk factors to the PRS model. It does not isolate PRS beyond established risk factors. All three pairwise AUC contrasts are retained, with two presentation columns: each model versus Base, and Full versus each row model. Full versus Base appears in both columns.
+The previous age/sex and established-risk-factor-only models are omitted from this release. Code uses descriptive keys to avoid collisions with historical model numbering. The primary manuscript comparison is Full versus Base. That contrast adds established risk factors and PRS jointly. Full versus PRS assesses the addition of established risk factors to the PRS model. It does not isolate PRS beyond established risk factors. All three pairwise AUC contrasts are retained. Table 3 presents a lower-triangular matrix with P-versus-Model-1 (Base) and P-versus-Model-2 (PRS) columns: PRS versus Base in the Model 2 row, and Full versus Base and PRS in the Full row. Dashes denote self-comparisons or comparisons shown elsewhere. The AUC functions already return all three contrasts; this presentation change does not alter their calculation.
 
 ## Files
 
@@ -25,7 +25,6 @@ The previous age/sex and established-risk-factor-only models are omitted from th
 | `optimism.R` | The original 500-resample GERA AUC point correction, with refitting |
 | `two_stage_bootstrap.R` | Independent, resumable outer refits and corrected-AUC CI/P summaries |
 | `clinical_utility.R` | Categorical NRI at 10% and NNS for the highest-risk 10% and 20% |
-| `decision_curve.R` | Observed-follow-up net benefit, with optional GERA optimism correction |
 | `calibration.R` | Grouped 5-year calibration, with optional GERA point correction |
 | `point_score.R` | Integer scores, hypothetical profile grid and 3/5/7/10-year risk summaries |
 
@@ -93,13 +92,13 @@ nns <- nns_bootstrap(d$Y, p)
 
 Categorical NRI uses the 10% threshold at each participant's observed follow-up, comparing PRS and Full against Base. Its event, non-event and total components use 10,000 fixed-model paired resamples and type-7 percentile CIs. NNS selects the highest-risk 10% and 20%, includes ties at the type-7 selection cutoff, recomputes cutoffs within resamples and uses type-1 percentile CIs. Fixed-time kernel NRI and score-to-surveillance-interval rules are not included. Seeds make new runs repeatable, but exact Monte Carlo endpoints depend on the original archived streams. The original NRI stream seeded once before GERA then PLCO; pass `seed = NULL` to preserve that stream across calls.
 
-`decision_curve()` calculates net benefit and standardized net benefit for Base, PRS, Full, All and None at observed follow-up, across 1%–20% thresholds in steps of 0.1 percentage points. Selection uses `p >= threshold`. The manuscript retains a vertical 10% reference line. `decision_curve_optimism(data, models, indices)` subtracts mean training-minus-original raw net benefit across the same 500 participant resamples as AUC correction, then divides by original GERA AN prevalence. All/None reference curves and PLCO external-validation curves remain unchanged. Corrected GERA curves are point estimates without DCA CIs or P values.
+DCA source code is preserved in [`archive/with_DCA/`](archive/with_DCA/README.md) for the manuscript alternative with DCA. It is excluded from the current manuscript workflow.
 
 ## Calibration and scoring
 
 `calibration_5y()` evaluates Full-model risk in five cohort-specific predicted-risk quintiles, fitting a time-only cloglog SCAM within each group. It returns apparent group estimates with approximate link-scale Wald intervals transformed to probabilities. `calibration_optimism(data, model, indices)` additionally corrects GERA group points using the same 500 resamples. Original internal quintile cutoffs stay fixed, with endpoints extended to 0 and 1. Each refitted Full model determines new group memberships. Refit group-specific time-only models separately in the training and original cohorts. Average the training-minus-original differences in estimated-minus-mean-predicted probability and subtract them from original group estimates, keeping the original predicted x coordinates. This is an adaptation of the bootstrap calibration framework, not a calibration intercept/slope estimate. Apparent CIs remain attached to apparent points only. The auxiliary fitting fallback checks the stable high-smoothing limit explicitly; unresolved fits stop.
 
-`point_score()` applies each term separately and rounds after scaling AA to 10 points. `profile_grid()` creates 1,008 hypothetical combinations. `score_risk()` averages model predictions within integer scores at 3, 5, 7 and 10 years. Figure 1A/B uses hypothetical profiles; Figure 1C and Supplementary Table 5 use real participant score groups. No score-to-follow-up-interval assignment is implemented. Supplementary Figures 3, 4 and 5 are calibration, DCA and absolute risk, respectively.
+`point_score()` applies each term separately and rounds after scaling AA to 10 points. `profile_grid()` creates 1,008 hypothetical combinations. `score_risk()` averages model predictions within integer scores at 3, 5, 7 and 10 years. Figure 1A/B uses hypothetical profiles; Figure 1C and Supplementary Table 5 use real participant score groups. No score-to-follow-up-interval assignment is implemented. Supplementary Figure 3 is calibration and Supplementary Figure 4 is absolute risk (previously Figure 5).
 
 ## Software and references
 
@@ -107,4 +106,3 @@ Prediction, model fitting and calibration require `scam` and `mgcv`. Optional im
 
 - Noma et al. *Stat Med*. 2021;40:5691–5701. Two-stage bootstrap intervals for optimism-corrected discrimination. https://doi.org/10.1002/sim.9148
 - Harrell FE Jr, Lee KL, Mark DB. *Stat Med*. 1996;15:361–387. Bootstrap validation and calibration framework. https://doi.org/10.1002/(SICI)1097-0258(19960229)15:4%3C361::AID-SIM168%3E3.0.CO;2-4
-- Zhang et al. *Ann Transl Med*. 2018;6:308. Decision curve analysis: a technical note. https://doi.org/10.21037/atm.2018.07.02
