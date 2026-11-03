@@ -3,7 +3,7 @@
 nri_bootstrap <- function(y, predictions, threshold = .10,
                           B = 10000L, seed = 123L) {
   p <- validate_predictions(y, predictions)
-  models <- c("Full", "Model1", "Model2", "Model3")
+  models <- c("PRS", "Full")
   stopifnot(all(c("Base", models) %in% colnames(p)), B >= 2L,
             threshold > 0, threshold < 1)
   high <- p >= threshold

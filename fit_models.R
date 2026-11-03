@@ -26,18 +26,18 @@ prepare_cohort <- function(data, seed = 123L) {
   d
 }
 
-fit_models <- function(gera) {
-  if (!requireNamespace("scam", quietly = TRUE)) stop("Install scam.")
+# Code keys avoid collisions with the five-model historical numbering.
+model_formulas <- function() {
   s <- mgcv::s
-  formulas <- list(
+  list(
     Base = Y ~ s(time_years, bs = "mpi", k = 7) + basecolo_out,
-    Model1 = Y ~ s(time_years, bs = "mpi", k = 7) + basecolo_out + age_centered + sex,
-    Model2 = Y ~ s(time_years, bs = "mpi", k = 7) + basecolo_out + age_centered + sex + bmi + colo_fh,
-    Model3 = Y ~ s(time_years, bs = "mpi", k = 7) + basecolo_out * prs_z,
-    Full = Y ~ s(time_years, bs = "mpi", k = 7) + basecolo_out * prs_z + age_centered + sex + bmi + colo_fh)
-  fits <- lapply(formulas, function(f)
-    scam::scam(f, data = gera, family = binomial("cloglog")))
-  stopifnot(all(vapply(fits, function(f)
-    isTRUE(f$conv) && identical(f$bfgs.info$conv, "Full convergence"), logical(1))))
-  fits
+    PRS = Y ~ s(time_years, bs = "mpi", k = 7) + basecolo_out * prs_z,
+    Full = Y ~ s(time_years, bs = "mpi", k = 7) + basecolo_out * prs_z +
+      age_centered + sex + bmi + colo_fh)
+}
+
+# Source optimism.R first to use the same checked fitting procedure as resampling.
+fit_models <- function(gera) {
+  if (!exists(".optimism_fit", mode = "function")) stop("Source optimism.R first.")
+  lapply(model_formulas(), function(f) .optimism_fit(f, gera)$fit)
 }

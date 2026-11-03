@@ -1,4 +1,4 @@
-# Bootstrap optimism correction for the five prespecified SCAM models.
+# Bootstrap optimism correction for the three prespecified SCAM models.
 # Clinical imputations and PRS preprocessing are held fixed during resampling.
 suppressPackageStartupMessages(library(scam))
 .optimism_auc <- function(y, p) {
@@ -116,7 +116,7 @@ optimism_summary <- function(apparent, draws, model_names = names(apparent)) {
 }
 
 optimism_bootstrap <- function(data, models, B = 500L, seed = 123L, workers = 1L) {
-    model_names <- c("Base", "Model1", "Model2", "Model3", "Full")
+    model_names <- c("Base", "PRS", "Full")
     stopifnot(is.list(models), all(model_names %in% names(models)),
               length(B) == 1L, B >= 2L, B == as.integer(B),
               length(workers) == 1L, workers >= 1L, workers == as.integer(workers))
