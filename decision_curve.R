@@ -27,3 +27,38 @@ decision_curve <- function(y, predictions, thresholds = (10:200)/1000) {
   do.call(rbind, c(lapply(colnames(p), function(m) summarize(m, p[, m])),
     list(summarize("All"), summarize("None"))))
 }
+
+# Shared participant indices should be the same ones used for the AUC correction.
+# Source optimism.R first. This returns corrected point curves, without CIs/P.
+decision_curve_optimism <- function(data, models, indices,
+                                    thresholds = (10:200)/1000) {
+  keys <- c("Base", "PRS", "Full")
+  stopifnot(all(keys %in% names(models)), length(indices) >= 2L)
+  models <- models[keys]
+  forms <- lapply(models, formula)
+  s <- mgcv::s
+  for (j in seq_along(forms)) environment(forms[[j]]) <- environment()
+  predict_all <- function(fits, d) sapply(fits, function(f)
+    as.numeric(predict(f, d, type = "response")))
+  apparent <- decision_curve(data$Y, predict_all(models, data), thresholds)
+  rows <- apparent$model %in% keys
+  op <- matrix(NA_real_, sum(rows), length(indices))
+  for (b in seq_along(indices)) {
+    ix <- indices[[b]]
+    stopifnot(length(ix) == nrow(data), all(ix %in% seq_len(nrow(data))))
+    db <- data[ix, , drop = FALSE]
+    fits <- lapply(forms, function(f) .optimism_fit(f, db)$fit)
+    po <- predict_all(fits, data)
+    train <- decision_curve(db$Y, po[ix, , drop = FALSE], thresholds)
+    test <- decision_curve(data$Y, po, thresholds)
+    op[, b] <- train$NB[rows] - test$NB[rows]
+  }
+  out <- apparent[, c("model", "threshold", "prevalence")]
+  out$apparent_NB <- apparent$NB
+  out$mean_optimism_NB <- 0
+  out$mean_optimism_NB[rows] <- rowMeans(op)
+  out$corrected_NB <- out$apparent_NB - out$mean_optimism_NB
+  out$corrected_sNB <- out$corrected_NB / mean(data$Y)
+  out$replicates <- length(indices)
+  out
+}
